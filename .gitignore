@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+WORKLOG.md
+outputs/
+.pytest_cache/
+.libero/
+*.egg-info/

@@ -1,0 +1,4 @@
+[submodule "submodules/LIBERO"]
+	path = submodules/LIBERO
+	url = https://github.com/huggingface/LIBERO
+	ignore = untracked

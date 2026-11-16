@@ -1,0 +1,33 @@
+[project]
+name = "prune-vla"
+version = "0.1.0"
+description = "DivPrune-style visual token pruning for the pi0.5 VLA, evaluated on LIBERO-10"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "lerobot[pi,libero]==0.7.0",
+    "hf-libero",  # resolved to the submodule below
+    "numpy",
+    "imageio[ffmpeg]",  # LeRobot writes rollout videos with it
+]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+prune_vla = ["assets/*.json"]
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.uv.sources]
+hf-libero = { path = "submodules/LIBERO", editable = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not gpu'"
+markers = ["gpu: needs a CUDA GPU and the lerobot/pi05_libero checkpoint"]
