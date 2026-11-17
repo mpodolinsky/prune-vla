@@ -9,6 +9,9 @@ information about the dropped regions.
     # same first frame, different methods
     python scripts/render_kept_tokens.py compare --call 0 --out assets/kept_compare.png \
         outputs/_sel_divprune_k128 "DivPrune K=128" outputs/_sel_divprune_k64 "DivPrune K=64" outputs/_sel_random_k64 "random K=64"
+    # the same comparison as a GIF over time (each row steps through its own episode)
+    python scripts/render_kept_tokens.py compare-gif --out assets/kept_compare.gif \
+        outputs/_sel_divprune_k128 "DivPrune K=128" outputs/_sel_divprune_k64 "DivPrune K=64" outputs/_sel_random_k64 "random K=64"
     # one run over time
     python scripts/render_kept_tokens.py gif outputs/_sel_divprune_k64 --label "DivPrune K=64" --out assets/kept_over_time.gif
 """
@@ -68,6 +71,35 @@ def compare(args) -> None:
     print(args.out)
 
 
+def compare_gif(args) -> None:
+    pairs = [(load(Path(r)), label) for r, label in zip(args.runs[::2], args.runs[1::2])]
+    side, head, foot, band = GRID * PATCH, 40, 30, 22
+    w, h = side * 4, head + len(pairs) * (side + band) + foot
+    n_calls = max(len(images) for (images, _), _ in pairs)
+    cmd = [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{w}x{h}",
+           "-r", str(args.fps), "-i", "-", "-vf", "split[a][b];[a]palettegen=max_colors=96[p];[b][p]paletteuse=dither=bayer:bayer_scale=5",
+           "-loop", "0", str(args.out)]
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+    frames = list(range(0, n_calls, args.every))
+    for call in frames:
+        canvas = Image.new("RGB", (w, h), (20, 20, 20))
+        for j, name in enumerate(f"{c} {k}" for c in CAMS for k in ("(model input)", "(kept patches)")):
+            labelled(canvas, name, j * side + 6, 8)
+        for i, ((images, kept), label) in enumerate(pairs):
+            c = min(call, len(images) - 1)  # a finished episode holds its last frame
+            y = head + i * (side + band)
+            labelled(canvas, f"{label}: {kept.shape[2]} of {GRID * GRID} tokens kept per camera   policy call {c}"
+                     + ("  (episode ended)" if c < call else ""), 6, y, fill=(0, 220, 120))
+            canvas.paste(Image.fromarray(row(images, kept, c)), (0, y + band - 2))
+        labelled(canvas, "Dropped patches darkened. SigLIP attention has already mixed context into the kept tokens, "
+                 "so this shows where tokens are kept, not what the model sees.", 6, h - 22, size=11, fill=(170, 170, 170))
+        proc.stdin.write(np.asarray(canvas).tobytes())
+    proc.stdin.close()
+    proc.wait()
+    print(f"{args.out}: {Path(args.out).stat().st_size / 1e6:.1f} MB, {len(frames)} frames")
+
+
 def gif(args) -> None:
     images, kept = load(Path(args.run))
     side, head, foot = GRID * PATCH, 40, 26
@@ -100,6 +132,12 @@ if __name__ == "__main__":
     c.add_argument("--out", type=Path, required=True)
     c.add_argument("runs", nargs="+", help="RUN_DIR LABEL pairs")
     c.set_defaults(fn=compare)
+    cg = sub.add_parser("compare-gif")
+    cg.add_argument("--every", type=int, default=2)
+    cg.add_argument("--fps", type=int, default=5)
+    cg.add_argument("--out", type=Path, required=True)
+    cg.add_argument("runs", nargs="+", help="RUN_DIR LABEL pairs")
+    cg.set_defaults(fn=compare_gif)
     g = sub.add_parser("gif")
     g.add_argument("run")
     g.add_argument("--label", default="")
