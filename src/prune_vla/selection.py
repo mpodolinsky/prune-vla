@@ -47,14 +47,19 @@ def divprune_select(tokens: torch.Tensor, k: int) -> torch.Tensor:
     return tokens.gather(1, idx[..., None].expand(-1, -1, tokens.shape[-1]))
 
 
+def random_indices(tokens: torch.Tensor, k: int, generator: torch.Generator | None = None) -> torch.Tensor:
+    """Indices ``(B, k)`` of a uniformly random subset, ascending (raster) order."""
+    b, n, _ = tokens.shape
+    if k >= n:
+        return torch.arange(n, device=tokens.device).expand(b, n)
+    scores = torch.rand(b, n, generator=generator, device=tokens.device)
+    return scores.topk(k, dim=-1).indices.sort(dim=-1).values
+
+
 def random_select(tokens: torch.Tensor, k: int, generator: torch.Generator | None = None) -> torch.Tensor:
     """Uniformly random subset of K tokens per sample (raster order kept)."""
-    b, n, d = tokens.shape
-    if k >= n:
-        return tokens
-    scores = torch.rand(b, n, generator=generator, device=tokens.device)
-    idx = scores.topk(k, dim=-1).indices.sort(dim=-1).values
-    return tokens.gather(1, idx[..., None].expand(-1, -1, d))
+    idx = random_indices(tokens, k, generator)
+    return tokens.gather(1, idx[..., None].expand(-1, -1, tokens.shape[-1]))
 
 
 def pool_tokens(tokens: torch.Tensor, k: int) -> torch.Tensor:

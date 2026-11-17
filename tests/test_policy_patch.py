@@ -73,3 +73,17 @@ def test_pruned_prefix_is_shorter_and_actions_stay_finite(policy_and_batch):
         h.restore()
     assert torch.isfinite(out).all()
     assert valid == 2 * 64 + 40  # two real cameras at K=64 plus the 40 real language tokens
+
+
+def test_selection_recording_matches_prefix(policy_and_batch):
+    from prune_vla import PruneConfig, apply_pruning
+
+    policy, batch, noise = policy_and_batch
+    h = apply_pruning(policy, PruneConfig(method="divprune", tokens_per_camera=64, record_selection=True))
+    try:
+        _actions(policy, batch, noise)
+    finally:
+        h.restore()
+    rec = h.selection[-1]
+    assert rec["kept"].shape == (2, 64) and rec["images"].shape == (2, 224, 224, 3)  # 2 real cameras
+    assert all((k[1:] > k[:-1]).all() and k.max() < 256 for k in rec["kept"])

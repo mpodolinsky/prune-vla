@@ -20,7 +20,7 @@ from typing import Literal
 
 import torch
 
-from .selection import divprune_select, pool_tokens, random_select
+from .selection import divprune_indices, pool_tokens, random_indices
 
 Method = Literal["none", "divprune", "random", "pool"]
 
@@ -32,6 +32,7 @@ class PruneConfig:
     compact: bool = False  # physically drop prefix slots that are padding for the whole batch
     seed: int = 0  # for method="random"
     profile: bool = False  # time prefill / denoise / whole call (adds cuda syncs)
+    record_selection: bool = False  # keep the model's input images and the kept token indices (divprune/random)
 
 
 class PruneStats:
@@ -55,6 +56,7 @@ class PruneStats:
 class PruneHandle:
     def __init__(self, policy, cfg: PruneConfig):
         self.policy, self.cfg, self.stats = policy, cfg, PruneStats()
+        self.selection: list[dict] = []  # one entry per policy call when cfg.record_selection
         self._originals: list[tuple[object, str, object]] = []
         self._call: dict[str, float] = {}
 
@@ -66,6 +68,15 @@ class PruneHandle:
         for obj, name, orig in reversed(self._originals):
             setattr(obj, name, orig)
         self._originals.clear()
+
+    def save_selection(self, path: str | Path) -> None:
+        """npz with ``images`` (N, C, H, W, 3) uint8 as seen by the model and ``kept`` (N, C, K) token indices."""
+        import numpy as np
+
+        if not self.selection:
+            return
+        np.savez_compressed(path, images=np.stack([e["images"] for e in self.selection]),
+                            kept=np.stack([e["kept"] for e in self.selection]))
 
     def save(self, path: str | Path) -> None:
         Path(path).write_text(json.dumps({"config": asdict(self.cfg), **self.stats.summary()}, indent=2))
@@ -90,21 +101,38 @@ def apply_pruning(policy, cfg: PruneConfig) -> PruneHandle:
         orig_embed_images = model._embed_images
         k = cfg.tokens_per_camera
 
-        def select(emb: torch.Tensor) -> torch.Tensor:
+        def select(emb: torch.Tensor):
+            """-> (kept tokens, kept indices or None)."""
             if k >= emb.shape[1]:
-                return emb
-            if cfg.method == "divprune":
-                return divprune_select(emb, k)
-            if cfg.method == "random":
-                return random_select(emb, k, gen)
+                return emb, None
             if cfg.method == "pool":
-                return pool_tokens(emb, k)
-            raise ValueError(f"unknown method {cfg.method!r}")
+                return pool_tokens(emb, k), None
+            if cfg.method == "divprune":
+                idx = divprune_indices(emb, k)
+            elif cfg.method == "random":
+                idx = random_indices(emb, k, gen)
+            else:
+                raise ValueError(f"unknown method {cfg.method!r}")
+            return emb.gather(1, idx[..., None].expand(-1, -1, emb.shape[-1])), idx
 
         def embed_images(images, img_masks):
             outs = orig_embed_images(images, img_masks)
             # A camera slot that is absent for the whole batch (pi0.5's "empty camera") is masked out anyway.
-            return [select(e) if bool(m.any()) else e for e, m in zip(outs, img_masks, strict=True)]
+            result, rec_imgs, rec_kept = [], [], []
+            for img, emb, m in zip(images, outs, img_masks, strict=True):
+                if not bool(m.any()):
+                    result.append(emb)
+                    continue
+                emb, idx = select(emb)
+                result.append(emb)
+                if cfg.record_selection and idx is not None:
+                    rec_imgs.append(((img[0].float().clamp(-1, 1) + 1) * 127.5).round().byte().permute(1, 2, 0).cpu().numpy())
+                    rec_kept.append(idx[0].cpu().numpy())
+            if rec_imgs:
+                import numpy as np
+
+                h.selection.append({"images": np.stack(rec_imgs), "kept": np.stack(rec_kept)})
+            return result
 
         h._patch(model, "_embed_images", embed_images)
 

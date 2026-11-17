@@ -124,6 +124,26 @@ Task 1, initial state 0 ("put both the cream cheese box and the butter in the ba
 panels. This episode was picked to show all three outcomes; it is not an average. K=64 fails after the full 520
 steps. Rebuild with `scripts/make_comparison_gif.py` (it reads the rollout videos in `outputs/`).
 
+### Which patches are kept
+
+Each kept token is one 14x14 patch of the 224x224 image the model receives (SigLIP's 16x16 grid), so the kept set can
+be drawn on the image. Dropped patches are darkened. All rows below start from the same first frame (task 1, init 0).
+
+<p align="center">
+  <img src="assets/kept_compare.png" alt="Kept patches for DivPrune K=128, DivPrune K=64 and random K=64 on the first frame" width="896">
+</p>
+
+<p align="center">
+  <img src="assets/kept_over_time.gif" alt="Kept patches over one episode, DivPrune K=64" width="896">
+</p>
+
+This is a qualitative view, not a reconstruction of what the model sees. SigLIP's self-attention has already mixed
+information from every patch into every token before pruning, so the kept tokens also carry some context from the
+dropped regions. It is still informative: it shows where the policy keeps a token of its own. As a rough check, the pixel
+variance of the kept patches is about the same as for random selection (ratio to the all-patch mean 0.98-1.11 against
+1.00-1.02), so I do not read a preference for objects or edges from this single episode. Reproduce with
+`--record-selection` on `prune_vla.eval_libero` and `scripts/render_kept_tokens.py`.
+
 ## Notes
 
 - Kept tokens get contiguous positions (LeRobot's `cumsum(pad_mask) - 1`); original positions are not preserved.

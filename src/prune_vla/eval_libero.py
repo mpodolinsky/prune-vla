@@ -61,6 +61,8 @@ def parse_args(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
     ap.add_argument("--tokens-per-camera", type=int, default=256, help="K kept per real camera (256 = all)")
     ap.add_argument("--compact", action="store_true", help="drop prefix slots that are pure padding")
     ap.add_argument("--profile", action="store_true", help="time prefill/denoise per policy call")
+    ap.add_argument("--record-selection", action="store_true",
+                    help="save the model's input images and kept token indices (selection.npz; divprune/random only)")
     ap.add_argument("--seed", type=int, default=1000)
     ap.add_argument("--n-episodes", type=int, default=5, help="episodes per task")
     ap.add_argument("--task-ids", type=int, nargs="*", default=None, help="LIBERO-10 task ids (default: all 10)")
@@ -82,7 +84,7 @@ def main(argv: list[str] | None = None) -> None:
     tag = f"{args.method}_k{args.tokens_per_camera}" + ("_compact" if args.compact else "")
     out = args.output_dir or REPO / "outputs" / tag
     cfg = PruneConfig(method=args.method, tokens_per_camera=args.tokens_per_camera, compact=args.compact,
-                      seed=args.seed, profile=args.profile)
+                      seed=args.seed, profile=args.profile, record_selection=args.record_selection)
 
     import lerobot.scripts.lerobot_eval as le
 
@@ -125,6 +127,7 @@ def main(argv: list[str] | None = None) -> None:
     finally:
         if "h" in handle:
             handle["h"].save(Path(out) / "prune_stats.json")
+            handle["h"].save_selection(Path(out) / "selection.npz")
         (Path(out) / "prune_run.json").write_text(json.dumps({"prune": asdict(cfg), "lerobot_args": lerobot_args}, indent=2))
 
 
