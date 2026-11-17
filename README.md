@@ -7,10 +7,9 @@ that are most different from each other (a max-min diversity problem on cosine d
 no training and no attention scores. Here it is applied to pi0.5's image tokens, so the Gemma backbone and the action
 expert's KV cache see a shorter visual prompt.
 
-```
-images -> SigLIP -> projector -> [ prune each real camera: 256 -> K tokens ] -> prefix = [cams | text] -> Gemma + action expert
-                                   ^ this repo
-```
+<p align="center">
+  <img src="assets/pruning_flow.gif" alt="Where the pruning sits in pi0.5: images, SigLIP and projector, DivPrune, Gemma prefill, action expert" width="900">
+</p>
 
 Nothing in the model is modified. `prune_vla.apply_pruning(policy, PruneConfig(...))` wraps two methods of a LeRobot
 `PI05Policy` on the instance and can be undone with `handle.restore()`.
@@ -91,7 +90,9 @@ steps), timed with CUDA syncs. Regenerate with `scripts/run_sweep.sh` and `scrip
 
 ### Example episode
 
-![Same LIBERO-10 episode with no pruning, DivPrune K=128 and DivPrune K=64](assets/task1_ep0.gif)
+<p align="center">
+  <img src="assets/task1_ep0.gif" alt="Same LIBERO-10 episode with no pruning, DivPrune K=128 and DivPrune K=64" width="720">
+</p>
 
 Task 1, initial state 0 ("put both the cream cheese box and the butter in the basket"), same start for all three
 panels. This episode was picked to show all three outcomes; it is not an average. K=64 fails after the full 520
