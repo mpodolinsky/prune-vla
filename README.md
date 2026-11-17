@@ -179,3 +179,31 @@ All panels: same task and initial state (init 0); left to right no pruning, DivP
 </p>
 
 "put the black bowl in the bottom drawer of the cabinet and close it". Unpruned, DivPrune and random all solved this task 5/5 at K=128.
+
+## More kept-patch examples
+
+Same view as above (task, initial state 0, one episode per row, each row follows its own episode). Each row's label gives the outcome of that run; these are single re-runs, so outcomes can differ from the sweep.
+
+### Task 0
+
+<p align="center">
+  <img src="assets/kept_task0.gif" alt="Kept patches over one episode of task 0: DivPrune K=128, DivPrune K=64, random K=64" width="896">
+</p>
+
+"put both the alphabet soup and the tomato sauce in the basket". DivPrune K=128 succeeds; DivPrune K=64 and random K=64 fail.
+
+### Task 4
+
+<p align="center">
+  <img src="assets/kept_task4.gif" alt="Kept patches over one episode of task 4: DivPrune K=128, DivPrune K=64, random K=64" width="896">
+</p>
+
+"put the white mug on the left plate and put the yellow and white mug on the right plate". All three runs fail.
+
+### Task 3
+
+<p align="center">
+  <img src="assets/kept_task3.gif" alt="Kept patches over one episode of task 3: DivPrune K=128, DivPrune K=64, random K=64" width="896">
+</p>
+
+"put the black bowl in the bottom drawer of the cabinet and close it". DivPrune K=128 and random K=64 succeed; DivPrune K=64 fails.

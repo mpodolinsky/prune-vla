@@ -40,6 +40,17 @@ def load(run: Path):
     return z["images"], z["kept"]  # (N, 2, 224, 224, 3), (N, 2, K)
 
 
+def outcome(run) -> str:
+    """'success' / 'failed' from the run's eval_info.json ('' when absent or several episodes)."""
+    import json
+
+    f = Path(run) / "eval_info.json"
+    if not f.exists():
+        return ""
+    ok = [e for t in json.loads(f.read_text())["per_task"] for e in t["metrics"]["successes"]]
+    return "" if len(ok) != 1 else ("success" if ok[0] else "failed")
+
+
 def row(images, kept, call: int) -> np.ndarray:
     parts = []
     for c in range(images.shape[1]):
@@ -72,7 +83,7 @@ def compare(args) -> None:
 
 
 def compare_gif(args) -> None:
-    pairs = [(load(Path(r)), label) for r, label in zip(args.runs[::2], args.runs[1::2])]
+    pairs = [(load(Path(r)), f"{label}{' - ' + outcome(r) if outcome(r) else ''}") for r, label in zip(args.runs[::2], args.runs[1::2])]
     side, head, foot, band = GRID * PATCH, 40, 30, 22
     w, h = side * 4, head + len(pairs) * (side + band) + foot
     n_calls = max(len(images) for (images, _), _ in pairs)
