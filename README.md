@@ -62,6 +62,33 @@ uv run pytest -m gpu          # on the real checkpoint: K=256 is bit-identical t
                               # compaction leaves actions unchanged, pruned prefix has the expected length
 ```
 
+## Results
+
+LIBERO-10, `lerobot/pi05_libero`, 10 tasks x 5 episodes per row (same initial states and seed in every row), RTX 4090,
+no finetuning. K is the number of tokens kept per camera. "Total" is one policy call (SigLIP + prefill + 10 denoise
+steps), timed with CUDA syncs. Regenerate with `scripts/run_sweep.sh` and `scripts/summarize.py`.
+
+| method | K | success (95% CI) | succ/eps | prefix slots | prefill ms | total ms / call |
+|---|---|---|---|---|---|---|
+| none, as shipped | 256 | 86% (74-93) | 43/50 | 968 | 64 | 142 |
+| none, compact | 256 | 84% (71-92) | 42/50 | 565 | 47 | 126 |
+| DivPrune | 128 | 62% (48-74) | 31/50 | 309 | 26 | 110 |
+| random | 128 | 66% (52-78) | 33/50 | 309 | 26 | 105 |
+| DivPrune | 64 | 16% (8-29) | 8/50 | 181 | 16 | 98 |
+| random | 64 | 16% (8-29) | 8/50 | 181 | 17 | 95 |
+| DivPrune | 32 | 0% (0-7) | 0/50 | 117 | 14 | 94 |
+| random | 32 | 0% (0-7) | 0/50 | 118 | 14 | 92 |
+| DivPrune | 16 | 0% (0-7) | 0/50 | 86 | 14 | 94 |
+| random | 16 | 0% (0-7) | 0/50 | 86 | 14 | 93 |
+| pool | 64 | 24% (14-37) | 12/50 | 181 | 16 | 95 |
+| pool | 16 | 0% (0-7) | 0/50 | 86 | 14 | 92 |
+
+- Pruning shortens the prefill (47 ms -> 26 ms at K=128, 17 ms at K=64) but the 10 denoise steps (about 56 ms) and
+  SigLIP (about 16 ms) do not get faster, so a call goes from 126 ms to roughly 105 ms (K=128) or 95 ms (K=64).
+- Success drops from 84% unpruned to 62% (DivPrune) at K=128, 16% at K=64 and 0% at K<=32. At these sample sizes
+  DivPrune and random selection are not distinguishable (62% vs 66% at K=128, 16% vs 16% at K=64).
+- "As shipped" and "compact" are the same model output; the 86% vs 84% difference is one episode.
+
 ## Notes
 
 - Kept tokens get contiguous positions (LeRobot's `cumsum(pad_mask) - 1`); original positions are not preserved.

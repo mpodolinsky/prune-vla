@@ -6,7 +6,16 @@ from pathlib import Path
 
 root = Path(sys.argv[1] if len(sys.argv) > 1 else "outputs")
 rows = []
-for d in sorted(root.glob("*/eval_info.json")):
+ORDER = {"none": 0, "divprune": 1, "random": 2, "pool": 3}
+runs = [d for d in root.glob("*/eval_info.json") if not d.parent.name.startswith("_")]
+
+
+def sort_key(d):
+    cfg = json.loads((d.parent / "prune_stats.json").read_text()).get("config", {}) if (d.parent / "prune_stats.json").exists() else {}
+    return (ORDER.get(cfg.get("method"), 9), cfg.get("compact", False), -cfg.get("tokens_per_camera", 0))
+
+
+for d in sorted(runs, key=sort_key):
     info = json.loads(d.read_text())["overall"]
     stats = json.loads((d.parent / "prune_stats.json").read_text()) if (d.parent / "prune_stats.json").exists() else {}
     cfg = stats.get("config", {})
