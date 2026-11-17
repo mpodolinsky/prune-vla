@@ -89,6 +89,14 @@ steps), timed with CUDA syncs. Regenerate with `scripts/run_sweep.sh` and `scrip
   DivPrune and random selection are not distinguishable (62% vs 66% at K=128, 16% vs 16% at K=64).
 - "As shipped" and "compact" are the same model output; the 86% vs 84% difference is one episode.
 
+### Example episode
+
+![Same LIBERO-10 episode with no pruning, DivPrune K=128 and DivPrune K=64](assets/task1_ep0.gif)
+
+Task 1, initial state 0 ("put both the cream cheese box and the butter in the basket"), same start for all three
+panels. This episode was picked to show all three outcomes; it is not an average. K=64 fails after the full 520
+steps. Rebuild with `scripts/make_comparison_gif.py` (it reads the rollout videos in `outputs/`).
+
 ## Notes
 
 - Kept tokens get contiguous positions (LeRobot's `cumsum(pad_mask) - 1`); original positions are not preserved.
