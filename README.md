@@ -108,3 +108,31 @@ steps. Rebuild with `scripts/make_comparison_gif.py` (it reads the rollout video
 
 - S. Ranjbar Alvar, G. Singh, M. Akbari, Y. Zhang. *DivPrune: Diversity-based Visual Token Pruning for Large Multimodal Models.* CVPR 2025.
 - Physical Intelligence, *pi0.5*; [LeRobot](https://github.com/huggingface/lerobot); [LIBERO](https://github.com/Lifelong-Robot-Learning/LIBERO).
+
+## More examples
+
+All panels: same task and initial state (init 0); left to right no pruning, DivPrune K=128, random K=128. The three episodes were hand-picked to show the three ways DivPrune and random can differ; they are not representative of the success rates in the table above.
+
+### Task 0: DivPrune succeeds, random fails
+
+<p align="center">
+  <img src="assets/task0_ep0_divprune_ok_random_fail.gif" alt="Task 0: DivPrune succeeds, random fails" width="720">
+</p>
+
+"put both the alphabet soup and the tomato sauce in the basket". At K=128 DivPrune solved this task 5/5 and random 2/5 (unpruned 4/5).
+
+### Task 4: DivPrune fails, random succeeds
+
+<p align="center">
+  <img src="assets/task4_ep0_divprune_fail_random_ok.gif" alt="Task 4: DivPrune fails, random succeeds" width="720">
+</p>
+
+"put the white mug on the left plate and put the yellow and white mug on the right plate". At K=128 DivPrune solved this task 0/5 and random 3/5 (unpruned 5/5).
+
+### Task 3: all three succeed
+
+<p align="center">
+  <img src="assets/task3_ep0_all_succeed.gif" alt="Task 3: all three succeed" width="720">
+</p>
+
+"put the black bowl in the bottom drawer of the cabinet and close it". Unpruned, DivPrune and random all solved this task 5/5 at K=128.
