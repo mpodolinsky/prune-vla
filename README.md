@@ -88,6 +88,32 @@ steps), timed with CUDA syncs. Regenerate with `scripts/run_sweep.sh` and `scrip
   DivPrune and random selection are not distinguishable (62% vs 66% at K=128, 16% vs 16% at K=64).
 - "As shipped" and "compact" are the same model output; the 86% vs 84% difference is one episode.
 
+### Episode length
+
+Failed episodes always run to the 520-step limit, so the mean over all episodes mostly tracks the success rate. The
+informative number is how long successful episodes take. Pruned runs are slower even when they succeed. "Paired" compares
+the same task and initial state where both the unpruned and the pruned run succeeded.
+
+| method | K | successful episodes | mean steps (successful) | paired extra steps vs unpruned |
+|---|---|---|---|---|
+| none, compact | 256 | 42 | 269 | - |
+| DivPrune | 128 | 31 | 306 | +37 (n=29) |
+| random | 128 | 33 | 304 | +49 (n=30) |
+| DivPrune | 64 | 8 | 371 | +130 (n=8) |
+| random | 64 | 8 | 349 | +96 (n=8) |
+| pool | 64 | 12 | 359 | +101 (n=11) |
+
+DivPrune and random are not distinguishable here, and the K=64 rows have very few episodes. Steps are counted as frames
+in the rollout videos. Two possible explanations (not tested):
+
+1. **Less precise perception.** Pruning drops detail, and diversity-based selection keeps spread-out tokens rather than
+   the fine ones around the gripper and object edges. The policy may take hedged moves or retry grasps and placements.
+2. **Averaged-out actions.** pi0.5 samples actions by flow matching; with weaker conditioning the output drifts toward
+   the average of plausible actions, which are smaller, so every episode gets slower without extra retries.
+
+Measuring the spread of sampled action chunks across noise seeds, action magnitude along trajectories and
+gripper open/close counts would tell these apart.
+
 ### Example episode
 
 <p align="center">
